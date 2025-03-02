@@ -1,6 +1,10 @@
 name: Android Build
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master  # Runs only when code is pushed to 'master'
+  pull_request:  # Runs on every PR, regardless of branch
 
 jobs:
   build:
@@ -30,4 +34,4 @@ jobs:
         with:
           name: app-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 7  # Optional: Keep artifacts for 7 days
+          retention-days: 7  # Artifact expires in 7 days

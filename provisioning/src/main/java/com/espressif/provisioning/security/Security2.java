@@ -202,6 +202,8 @@ public class Security2 implements Security {
 
         SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
         IvParameterSpec parameterSpec = new IvParameterSpec(nonce);
+        counter++;
+
         try {
             this.cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, parameterSpec);
         } catch (InvalidAlgorithmParameterException e) {
@@ -217,8 +219,6 @@ public class Security2 implements Security {
         } catch (IllegalBlockSizeException e) {
             e.printStackTrace();
         }
-        counter++;
-
         return null;
     }
 
@@ -226,6 +226,7 @@ public class Security2 implements Security {
         byte[] nonce = new byte[12];
         System.arraycopy(deviceNonce, 0, nonce, 0, 8);
         System.arraycopy(intToBigEndian(counter), 0, nonce, 8, 4);
+        counter++;
 
         SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
         IvParameterSpec parameterSpec = new IvParameterSpec(nonce);
@@ -244,8 +245,6 @@ public class Security2 implements Security {
         } catch (IllegalBlockSizeException e) {
             e.printStackTrace();
         }
-        counter++;
-
         return null;
     }
 

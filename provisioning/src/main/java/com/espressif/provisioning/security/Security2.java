@@ -1,17 +1,3 @@
-// Copyright 2022 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package com.espressif.provisioning.security;
 
 import android.util.Log;
@@ -40,11 +26,6 @@ import javax.crypto.spec.SecretKeySpec;
 import espressif.Sec2;
 import espressif.Session;
 
-/**
- * Security 1 implementation of the handshake and encryption
- * protocols.
- * Security 1 is based on AES CTR mode with NoPadding
- */
 public class Security2 implements Security {
     private static final String TAG = "Espressif::" + Security2.class.getSimpleName();
 
@@ -66,12 +47,9 @@ public class Security2 implements Security {
     private byte[] clientProof;
     private byte[] sharedKey;
     private byte[] key;
+    private int counter;
 
-    /***
-     * Create Security 1 implementation
-     */
     public Security2(String username, String password) {
-
         userName = username;
         Log.d(TAG, "User name : " + username + " password : " + password);
 
@@ -210,16 +188,20 @@ public class Security2 implements Security {
             sharedKey = BigIntegerUtils.bigIntegerToBytes(client.K);
             key = Arrays.copyOfRange(sharedKey, 0, 32);
 
+            counter = (deviceNonce[8] & 0xFF) << 24 | (deviceNonce[9] & 0xFF) << 16 | (deviceNonce[10] & 0xFF) << 8 | (deviceNonce[11] & 0xFF);
+
         } catch (InvalidProtocolBufferException e) {
             Log.e(TAG, e.getMessage());
         }
     }
 
     public byte[] encrypt(byte[] data) {
+        byte[] nonce = new byte[12];
+        System.arraycopy(deviceNonce, 0, nonce, 0, 8);
+        System.arraycopy(intToBigEndian(counter), 0, nonce, 8, 4);
 
-        // Device nonce = IV
         SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
-        IvParameterSpec parameterSpec = new IvParameterSpec(deviceNonce);
+        IvParameterSpec parameterSpec = new IvParameterSpec(nonce);
         try {
             this.cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, parameterSpec);
         } catch (InvalidAlgorithmParameterException e) {
@@ -235,13 +217,18 @@ public class Security2 implements Security {
         } catch (IllegalBlockSizeException e) {
             e.printStackTrace();
         }
+        counter++;
+
         return null;
     }
 
     public byte[] decrypt(byte[] data) {
+        byte[] nonce = new byte[12];
+        System.arraycopy(deviceNonce, 0, nonce, 0, 8);
+        System.arraycopy(intToBigEndian(counter), 0, nonce, 8, 4);
 
         SecretKeySpec secretKeySpec = new SecretKeySpec(key, "AES");
-        IvParameterSpec parameterSpec = new IvParameterSpec(deviceNonce);
+        IvParameterSpec parameterSpec = new IvParameterSpec(nonce);
         try {
             this.cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, parameterSpec);
         } catch (InvalidAlgorithmParameterException e) {
@@ -257,6 +244,17 @@ public class Security2 implements Security {
         } catch (IllegalBlockSizeException e) {
             e.printStackTrace();
         }
+        counter++;
+
         return null;
+    }
+
+    private byte[] intToBigEndian(int value) {
+        return new byte[] {
+                (byte) (value >> 24),
+                (byte) (value >> 16),
+                (byte) (value >> 8),
+                (byte) value
+        };
     }
 }
